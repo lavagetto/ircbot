@@ -1,0 +1,6 @@
+vendor/*
+config.json
+ircbot.db
+credentials.json
+token.json
+*.code-workspace
