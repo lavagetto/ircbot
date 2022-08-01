@@ -83,6 +83,11 @@ func (irc *IrcBot) Reply(m *hbot.Message, what string) {
 	irc.bot.Irc.Reply(m, what)
 }
 
+// Change topic
+func (irc *IrcBot) Topic(channel string, what string) {
+	irc.bot.Irc.Topic(channel, what)
+}
+
 // get the hellabot logger
 func (irc *IrcBot) Logger() log.Logger {
 	return irc.bot.Irc.Logger
