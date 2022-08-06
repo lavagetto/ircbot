@@ -16,7 +16,7 @@ import (
 	Commands section
 */
 type CommandClosure func(
-	[]string,
+	map[string]string,
 	*hbot.Bot,
 	*hbot.Message,
 	*bot.Configuration,
@@ -105,20 +105,23 @@ func (cmd Command) checkAcl(irc *hbot.Bot, m *hbot.Message) bool {
 }
 
 func (cmd Command) doAction(irc *hbot.Bot, m *hbot.Message) bool {
-	var matches []string
+	arg_names := cmd.ArgumentsRegexp.SubexpNames()
+	args := make(map[string]string)
 	if cmd.ArgumentsRegexp != nil {
-		args := strings.Join(strings.Fields(m.Content)[1:], " ")
+		argsStr := strings.Join(strings.Fields(m.Content)[1:], " ")
 		// Validate the content of the string
-		matches = cmd.ArgumentsRegexp.FindStringSubmatch(args)
+		matches := cmd.ArgumentsRegexp.FindStringSubmatch(argsStr)
 		if matches == nil {
 			irc.Reply(m, "The command is not properly formatted.")
 			irc.Reply(m, cmd.Help())
 			return false
 		}
-	} else {
-		matches = []string{cmd.ID}
+		for i, match := range matches[1:] {
+			name := arg_names[i]
+			args[name] = match
+		}
 	}
-	return cmd.Action(matches[1:], irc, m, cmd.Configuration, cmd.Db)
+	return cmd.Action(args, irc, m, cmd.Configuration, cmd.Db)
 }
 
 func (cmd Command) Help() string {

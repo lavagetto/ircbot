@@ -64,8 +64,8 @@ func (ct *Contact) Remove(db *sql.DB) error {
 	return err
 }
 
-func addContact(args []string, m *hbot.Message, irc *ircbot.IrcBot) bool {
-	contact := Contact{name: args[0], phone: args[1], email: args[2]}
+func addContact(args map[string]string, m *hbot.Message, irc *ircbot.IrcBot) bool {
+	contact := Contact{name: args["name"], phone: args["intl_phone"], email: args["email"]}
 	err := contact.Save(irc.DB())
 	if err == nil {
 		irc.Reply(m, "Contact added successfully.")
@@ -76,10 +76,10 @@ func addContact(args []string, m *hbot.Message, irc *ircbot.IrcBot) bool {
 	return true
 }
 
-func removeContact(args []string, m *hbot.Message, irc *ircbot.IrcBot) bool {
+func removeContact(args map[string]string, m *hbot.Message, irc *ircbot.IrcBot) bool {
 	db := irc.DB()
 	log := irc.Logger()
-	contact, err := GetContact(db, args[0])
+	contact, err := GetContact(db, args["name"])
 	if err != nil {
 		irc.Reply(m, "Couldn't find the contact you searched for")
 		log.Error(err.Error())
@@ -95,10 +95,10 @@ func removeContact(args []string, m *hbot.Message, irc *ircbot.IrcBot) bool {
 	return true
 }
 
-func getContact(args []string, m *hbot.Message, irc *ircbot.IrcBot) bool {
+func getContact(args map[string]string, m *hbot.Message, irc *ircbot.IrcBot) bool {
 	db := irc.DB()
 	log := irc.Logger()
-	contact, err := GetContact(db, args[0])
+	contact, err := GetContact(db, args["name"])
 	if err != nil {
 		irc.Reply(m, "Couldn't find the contact you searched for")
 		log.Error(err.Error())

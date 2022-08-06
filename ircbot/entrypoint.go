@@ -95,7 +95,7 @@ func (irc *IrcBot) Logger() log.Logger {
 
 // Adds a non-configured command to the registry, that can be then configured.
 func (irc *IrcBot) AddCommand(name string, action CommandAction) *triggers.Command {
-	CommandClosure := func(args []string, bot *hbot.Bot, m *hbot.Message, c *bot.Configuration, db *sql.DB) bool {
+	CommandClosure := func(args map[string]string, bot *hbot.Bot, m *hbot.Message, c *bot.Configuration, db *sql.DB) bool {
 		return action(args, m, irc)
 	}
 	c := &triggers.Command{
@@ -125,7 +125,7 @@ func (irc *IrcBot) addAclCommand(name string, help string, callback CommandActio
 }
 
 type CommandAction func(
-	[]string,
+	map[string]string,
 	*hbot.Message,
 	*IrcBot,
 ) bool

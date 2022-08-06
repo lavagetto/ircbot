@@ -19,11 +19,11 @@ type newCommandParams struct {
 	action      CommandClosure
 }
 
-func getVerifyArgs(expected *[]string, t *testing.T) CommandClosure {
-	return func(args []string, irc *hbot.Bot, m *hbot.Message, c *bot.Configuration, db *sql.DB) bool {
-		for i, arg := range args {
-			if (*expected)[i] != arg {
-				t.Errorf("%s != %s at args[%d]", (*expected)[i], arg, i)
+func getVerifyArgs(expected map[string]string, t *testing.T) CommandClosure {
+	return func(args map[string]string, irc *hbot.Bot, m *hbot.Message, c *bot.Configuration, db *sql.DB) bool {
+		for name, arg := range args {
+			if expected[name] != arg {
+				t.Errorf("%s != %s at args[%s]", expected[name], arg, name)
 			}
 		}
 		return true
@@ -31,14 +31,14 @@ func getVerifyArgs(expected *[]string, t *testing.T) CommandClosure {
 }
 
 func TestCommandSimple(t *testing.T) {
-	expected := []string{"test", "what is there"}
+	expected := map[string]string{"param": "what is there"}
 	commandVars := newCommandParams{
 		"test_command",
 		`(?P<param>\w+)\s+(.*)$`,
 		"Test command",
 		true,
 		true,
-		getVerifyArgs(&expected, t),
+		getVerifyArgs(expected, t),
 	}
 	// TODO: implement this
 	fmt.Println(commandVars)

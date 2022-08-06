@@ -32,7 +32,7 @@ var lyrics = []string{
 	"Never gonna tell a lie and hurt you",
 }
 
-func sing(args []string, m *hbot.Message, irc *IrcBot) bool {
+func sing(args map[string]string, m *hbot.Message, irc *IrcBot) bool {
 	for _, line := range lyrics {
 		irc.Reply(m, line)
 		time.Sleep(800 * time.Millisecond)
@@ -40,14 +40,26 @@ func sing(args []string, m *hbot.Message, irc *IrcBot) bool {
 	return true
 }
 
-// IRC actions
-func addACL(args []string, m *hbot.Message, irc *IrcBot) bool {
-	if len(args) != 2 {
+func porcessAclParams(args map[string]string, m *hbot.Message, irc *IrcBot) (string, string, bool) {
+	command, ok := args["command"]
+	if !ok {
 		irc.Reply(m, "Somehow we got the wrong number of arguments.")
+		return "", "", false
+	}
+	identifier, ok := args["nick_or_chan"]
+	if !ok {
+		irc.Reply(m, "Somehow we got the wrong number of arguments.")
+		return "", "", false
+	}
+	return command, identifier, true
+}
+
+// IRC actions
+func addACL(args map[string]string, m *hbot.Message, irc *IrcBot) bool {
+	command, identifier, ok := porcessAclParams(args, m, irc)
+	if !ok {
 		return false
 	}
-	command := args[0]
-	identifier := args[1]
 	// First let's check if the ACL is already present.
 	if acl.ExistsACL(command, identifier, irc.DB()) {
 		irc.Reply(m, "This ACL is already present.")
@@ -65,14 +77,13 @@ func addACL(args []string, m *hbot.Message, irc *IrcBot) bool {
 }
 
 // Special command to remove an acl rule
-func removeAcl(args []string, m *hbot.Message, irc *IrcBot) bool {
-	db := irc.DB()
-	if len(args) != 2 {
-		irc.Reply(m, "Somehow we got the wrong number of arguments.")
+func removeAcl(args map[string]string, m *hbot.Message, irc *IrcBot) bool {
+	command, identifier, ok := porcessAclParams(args, m, irc)
+	if !ok {
 		return false
 	}
-	command := args[0]
-	identifier := args[1]
+	db := irc.DB()
+
 	// First let's check if the ACL is already present.
 	if !acl.ExistsACL(command, identifier, db) {
 		irc.Reply(m, "This ACL is not present.")
@@ -89,8 +100,8 @@ func removeAcl(args []string, m *hbot.Message, irc *IrcBot) bool {
 	return true
 }
 
-func readAcl(args []string, m *hbot.Message, irc *IrcBot) bool {
-	command := args[0]
+func readAcl(args map[string]string, m *hbot.Message, irc *IrcBot) bool {
+	command := args["command"]
 	myAcl, err := acl.GetACL(command, irc.DB(), irc.Config())
 	if err != nil {
 		irc.Reply(m, "Could not fetch the requested ACL:")
@@ -110,8 +121,8 @@ func readAcl(args []string, m *hbot.Message, irc *IrcBot) bool {
 	return true
 }
 
-func changePass(args []string, m *hbot.Message, irc *IrcBot) bool {
-	newPass := args[0]
+func changePass(args map[string]string, m *hbot.Message, irc *IrcBot) bool {
+	newPass := args["new_password"]
 	// Make a message to nickserv. I know this is hacky, but better than forging a message from scratch.
 	requestor := m.From
 	m.From = "NickServ"
