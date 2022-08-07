@@ -112,7 +112,7 @@ func getContact(args map[string]string, m *hbot.Message, irc *ircbot.IrcBot) boo
 
 func AddContact(irc *ircbot.IrcBot) {
 	add := irc.AddCommand("contact_add", addContact).SetHelp("Add a contact (privmsg only)")
-	add.Arguments("(?P<name>\\w+)\\s+(?P<intl_phone>\\+\\d{5,15})\\s+(?P<email>\\S+)$").AllowPrivate()
-	irc.AddCommand("contact_get", getContact).SetHelp("Gets information about a contact (privmsg only)").Arguments("(?P<name>\\w+)").AllowPrivate()
-	irc.AddCommand("contact_remove", removeContact).SetHelp("Removes a contact (privmsg only)").Arguments("(?P<name>\\w+)").AllowPrivate()
+	add.AddParameter("name", `\w+`).AddParameter("intl_phone", `\+\d{5,15}`).AddParameter("email", `\S+`).AllowPrivate()
+	irc.AddCommand("contact_get", getContact).SetHelp("Gets information about a contact (privmsg only)").AddParameter("name", `\w+`).AllowPrivate()
+	irc.AddCommand("contact_remove", removeContact).SetHelp("Removes a contact (privmsg only)").AddParameter("name", `\w+`).AllowPrivate()
 }

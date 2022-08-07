@@ -104,24 +104,25 @@ func (irc *IrcBot) AddCommand(name string, action CommandAction) *triggers.Comma
 		Db:            irc.DB(),
 		Configuration: irc.Config(),
 	}
+	c.InitParams()
 	irc.ircCommands = append(irc.ircCommands, c)
 	return c
 }
 
 func (irc *IrcBot) AddBuiltins() {
-	irc.AddCommand("sing", sing).AllowChannel().AllowPrivate().Arguments("").SetHelp("Sings a nice tune.")
+	irc.AddCommand("sing", sing).AllowChannel().AllowPrivate().SetHelp("Sings a nice tune.")
 	irc.addAclCommand("acl_add", "Adds the ability for a command to be used by a single user or in a channel", addACL)
 	irc.addAclCommand("acl_remove", "Removes a user/channel from the ACL", removeAcl)
 	irc.addAclCommand("acl_get", "Gets the defined ACLs for a command", readAcl)
-	irc.AddCommand("passwd", changePass).Arguments("(?P<new_password>\\S+)\\s*$").AllowPrivate().SetHelp("Changes the nickserv password.")
+	irc.AddCommand("passwd", changePass).AddParameter("new_password", `\S+`).AllowPrivate().SetHelp("Changes the nickserv password.")
 }
 
 func (irc *IrcBot) addAclCommand(name string, help string, callback CommandAction) {
-	arg := "(?P<command>\\S+)\\s+(?P<nick_or_chan>\\S+)\\s*$"
-	if name == "acl_get" {
-		arg = "(?P<command>\\S+)\\s*$"
+	cmd := irc.AddCommand(name, callback).AllowPrivate().SetHelp(help)
+	cmd.AddParameter("command", `\w+`)
+	if name != "acl_get" {
+		cmd.AddParameter("nick_or_chan", `\S+`)
 	}
-	irc.AddCommand(name, callback).AllowPrivate().Arguments(arg).SetHelp(help)
 }
 
 type CommandAction func(

@@ -72,30 +72,42 @@ You just need to initialize it in your main program
 
 As a reference, commands to manage a contact list are provided under example/
 
-Basically, you have to pick a name for the command, and a callback to be called from it.
+Basically, you have to pick a name for the command, and a callback to be called from it. So say you wanted to make a basic greeter function, that replies to `!greet <name>`:
+```golang
+func sayHello(args map[string]string, m *hbot.Message, i *ircbot.IrcBot) bool {
+    i.Reply(m, fmt.Sprintf("Hello, %s!", args["name"]))
+    // We don't want other handlers to process this message
+    return true
+}
 
-The signature of this callback needs to be `ircbot.CommandAction`.
+irc.AddCommand("greet", sayHello).AddParameter("name", `\w+`).AllowPublic()
+```
+as you can see, the signature of this callback needs to be `ircbot.CommandAction`, and the first argument contains the values of the parameters in
+a map. We added `AllowPublic()` to allow the command to be called in public
+channels, and the corresponding `AllowPrivate()` to allow the command in private.
+
+Please note: if you don't add either, your command will not be invoked in any situation!
+
+The command parser is very strict, and if a parameter is not found, it will
+refuse to execute the command.
+
+It is however possible to add a default value for a parameter using `AddParameterWithDefault`, or a context-dependent default using
+`AddParameterWithDefaultCb`.
+
+ For instance, let's say we want our "greet" function
+to default to the sender name if none was provided.
 So for example:
 ```golang
-    func sayHello(args []string, m *hbot.Message, i *ircbot.IrcBot) bool {
-        greeted := m.From
-        if args[0] != "" {
-            greeted = args[0]
-        }
-        i.Reply(m, fmt.Sprintf("Hello, %s!", greeted))
-        return true
+    func defaultGreeter(m *hbot.Message) string {
+        return m.From
     }
+    c := irc.AddCommand("greet", sayHello)
+    c.AddParameterWithDefaultCb("name", `\w+`, defaultGreeter)
+```
+ We also want to set a help message. That is done by using the `Help` method.
+ Ircbot will take care of properly formatting the output for you, including
+ an example of the syntax with parameters.
 
-    hello := irc.AddCommand("greet", sayHello)
-```
-now we want to define the arguments that this command accepts. Those will be passed to the callback in the
-args slice. We also want to set a help message. Use named parameters in the regular expression for the arguments
-as it will print out a nicer help message later on. Finally, we want this to work in public channels, so we call
-`AllowChannel()`. If we want to allow greeting in query, we'll need to also add `AllowPrivate()`
-```golang
-    hello.Arguments("(?P<name>\\w+)?")
-    hello.SetHelp("Cheers someone").AllowChannel()
-```
 
 ### A more complex example: a contact list
 
@@ -104,5 +116,23 @@ but it shows how to store and retrieve information in the database.
 
 
 ## FAQ
-Q: Is ircbot useful for X?
-A: No.
+### Is ircbot useful for X?
+No. In fact, you should not use it.
+
+### Can you add feature X?
+Didn't you see the `patches welcome` sign out front?
+
+### Is ircbot ready for production?
+It depends. Do you employ the author? If yes, "maybe".
+Otherwise, "LOL".
+
+### Is ircbot cloud-native?
+Get lost.
+
+### Isn't IRC like an internet protocol from the 90s?
+
+Yes, so is HTTP. So what?
+
+### Ok by why not a slack bot?
+
+Because I'm an anti-business commie boomer, obviously. Also see "Is ircbot cloud-native?"

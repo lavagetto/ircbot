@@ -28,13 +28,14 @@ import (
 
 var configFile = flag.String("config", "config.json", "Optional configuration file (JSON)")
 
+// This function will be called if no name is provided on the command line
+func nameFromMsg(m *hbot.Message) string {
+	return m.From
+}
+
 // Very basic example. For a more complex one see the contact module
-func sayHello(args []string, m *hbot.Message, i *ircbot.IrcBot) bool {
-	greeted := m.From
-	if args[0] != "" {
-		greeted = args[0]
-	}
-	i.Reply(m, fmt.Sprintf("Hello, %s!", greeted))
+func sayHello(args map[string]string, m *hbot.Message, i *ircbot.IrcBot) bool {
+	i.Reply(m, fmt.Sprintf("Hello, %s!", args["name"]))
 	return true
 }
 
@@ -45,7 +46,7 @@ func main() {
 		panic(err)
 	}
 	// Add one command
-	irc.AddCommand("greet", sayHello).Arguments("(?P<name>\\w+)?").SetHelp("Cheer the counterpart").AllowChannel()
+	irc.AddCommand("greet", sayHello).AddParameterWithDefaultCb("name", `\w+`, nameFromMsg).SetHelp("Cheer the counterpart").AllowChannel()
 	// Add commands from the contact list module
 	contact.AddContact(irc)
 	irc.Run()

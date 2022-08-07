@@ -23,6 +23,43 @@ type CommandClosure func(
 	*sql.DB,
 ) bool
 
+type argsCallback func(
+	*hbot.Message,
+) string
+
+type CommandArgument struct {
+	value           string
+	validator       *regexp.Regexp
+	defaultCallback argsCallback
+}
+
+func (c *CommandArgument) SetValidator(reg string) {
+	c.validator = regexp.MustCompile(reg)
+}
+
+// Set default value
+func (c *CommandArgument) Default(value string) {
+	c.defaultCallback = func(*hbot.Message) string {
+		return value
+	}
+}
+
+func (c *CommandArgument) Set(value string) error {
+	if c.validator.FindStringIndex(value) != nil {
+		c.value = value
+		return nil
+	}
+
+	return fmt.Errorf("the value %s doesn't match the regexp %s", value, c.validator.String())
+}
+
+func (c *CommandArgument) Get(m *hbot.Message) string {
+	if c.value != "" {
+		return c.value
+	}
+	return c.defaultCallback(m)
+}
+
 // Command encapsulates an irc command
 type Command struct {
 	// The command identifier - it will determine how
@@ -35,6 +72,52 @@ type Command struct {
 	Action          CommandClosure
 	Db              *sql.DB
 	Configuration   *bot.Configuration
+	parameters      map[string]*CommandArgument
+	paramOder       []string
+}
+
+func (cmd *Command) InitParams() {
+	if cmd.parameters == nil {
+		cmd.parameters = make(map[string]*CommandArgument)
+	}
+	if cmd.paramOder == nil {
+		cmd.paramOder = make([]string, 0)
+	}
+}
+
+func (cmd *Command) addParameter(name string, c *CommandArgument) {
+	cmd.parameters[name] = c
+	cmd.paramOder = append(cmd.paramOder, name)
+}
+
+func (cmd *Command) AddParameter(name string, regex string) *Command {
+	c := &CommandArgument{}
+	c.SetValidator(regex)
+	cmd.addParameter(name, c)
+	return cmd
+}
+
+func (cmd *Command) AddParameterWithDefault(name string, regex string, defaultValue string) *Command {
+	c := &CommandArgument{}
+	c.SetValidator(fmt.Sprintf("(%s)?", regex))
+	c.Default(defaultValue)
+	cmd.addParameter(name, c)
+	return cmd
+}
+
+func (cmd *Command) AddParameterWithDefaultCb(name string, regex string, defaultCb argsCallback) *Command {
+	c := &CommandArgument{}
+	c.SetValidator(fmt.Sprintf("(%s)?", regex))
+	c.defaultCallback = defaultCb
+	cmd.addParameter(name, c)
+	return cmd
+}
+
+func (cmd *Command) Parameter(name string) *CommandArgument {
+	if _, ok := cmd.parameters[name]; !ok {
+		cmd.addParameter(name, &CommandArgument{})
+	}
+	return cmd.parameters[name]
 }
 
 // Helper functions when initializing from ircbot.IrcBot.AddCommand
@@ -55,7 +138,14 @@ func (cmd *Command) SetHelp(msg string) *Command {
 	return cmd
 }
 
+// Add all arguments in a single regexp
+// the regexp must use named grouped parameters.
+// Deprecated: you should use the AddParameter* functions
+// instead, which provide more advanced handling.
 func (cmd *Command) Arguments(argRegexp string) *Command {
+	if len(cmd.parameters) > 0 {
+		panic("A command can't have both named parameters and Arguments() calls")
+	}
 	cmd.ArgumentsRegexp = regexp.MustCompile(argRegexp)
 	return cmd
 }
@@ -105,31 +195,61 @@ func (cmd Command) checkAcl(irc *hbot.Bot, m *hbot.Message) bool {
 }
 
 func (cmd Command) doAction(irc *hbot.Bot, m *hbot.Message) bool {
-	arg_names := cmd.ArgumentsRegexp.SubexpNames()
+	args, err := cmd.parseMessage(m)
+	if err != nil {
+		irc.Reply(m, err.Error())
+	}
+	return cmd.Action(args, irc, m, cmd.Configuration, cmd.Db)
+}
+
+func (cmd Command) parseMessage(m *hbot.Message) (map[string]string, error) {
 	args := make(map[string]string)
+	rawArgs := strings.Fields(m.Content)[1:]
+	numRawArgs := len(rawArgs)
 	if cmd.ArgumentsRegexp != nil {
-		argsStr := strings.Join(strings.Fields(m.Content)[1:], " ")
+		arg_names := cmd.ArgumentsRegexp.SubexpNames()
+		argsStr := strings.Join(rawArgs, " ")
 		// Validate the content of the string
 		matches := cmd.ArgumentsRegexp.FindStringSubmatch(argsStr)
 		if matches == nil {
-			irc.Reply(m, "The command is not properly formatted.")
-			irc.Reply(m, cmd.Help())
-			return false
+			return args, fmt.Errorf("the command is not properly formatted")
 		}
 		for i, match := range matches[1:] {
 			name := arg_names[i]
 			args[name] = match
 		}
+		return args, nil
 	}
-	return cmd.Action(args, irc, m, cmd.Configuration, cmd.Db)
+	for idx, param := range cmd.paramOder {
+		c := cmd.Parameter(param)
+		// A value was provided
+		if numRawArgs > idx {
+			err := c.Set(rawArgs[idx])
+			if err != nil {
+				return args, err
+			}
+		}
+		value := c.Get(m)
+		// If no value was provided, and no default was provided, return an error
+		if value == "" {
+			return args, fmt.Errorf("no value provided for parameter %s and no default available", param)
+		}
+		args[param] = value
+	}
+	return args, nil
 }
 
 func (cmd Command) Help() string {
 	parameters := []string{fmt.Sprintf("!%s", cmd.ID)}
-	for i, parameter := range cmd.ArgumentsRegexp.SubexpNames()[1:] {
-		if parameter == "" {
-			parameter = fmt.Sprintf("arg%d", i)
+	if cmd.ArgumentsRegexp != nil {
+		for i, parameter := range cmd.ArgumentsRegexp.SubexpNames()[1:] {
+			if parameter == "" {
+				parameter = fmt.Sprintf("arg%d", i)
+			}
+			parameters = append(parameters, fmt.Sprintf("<%s>", parameter))
 		}
+	}
+	for _, parameter := range cmd.paramOder {
 		parameters = append(parameters, fmt.Sprintf("<%s>", parameter))
 	}
 	return fmt.Sprintf("%s. Format: %s", cmd.HelpMsg, strings.Join(parameters, " "))
