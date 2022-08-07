@@ -28,7 +28,6 @@ type argsCallback func(
 ) string
 
 type CommandArgument struct {
-	value           string
 	validator       *regexp.Regexp
 	defaultCallback argsCallback
 }
@@ -44,20 +43,22 @@ func (c *CommandArgument) Default(value string) {
 	}
 }
 
-func (c *CommandArgument) Set(value string) error {
+func (c *CommandArgument) Validate(value string) error {
 	if c.validator.FindStringIndex(value) != nil {
-		c.value = value
 		return nil
 	}
 
 	return fmt.Errorf("the value %s doesn't match the regexp %s", value, c.validator.String())
 }
 
-func (c *CommandArgument) Get(m *hbot.Message) string {
-	if c.value != "" {
-		return c.value
+func (c *CommandArgument) Get(value string, m *hbot.Message) string {
+	if value != "" {
+		return value
 	}
-	return c.defaultCallback(m)
+	if c.defaultCallback != nil {
+		return c.defaultCallback(m)
+	}
+	return ""
 }
 
 // Command encapsulates an irc command
@@ -222,14 +223,17 @@ func (cmd Command) parseMessage(m *hbot.Message) (map[string]string, error) {
 	}
 	for idx, param := range cmd.paramOder {
 		c := cmd.Parameter(param)
+		var value string
 		// A value was provided
 		if numRawArgs > idx {
-			err := c.Set(rawArgs[idx])
+			err := c.Validate(rawArgs[idx])
 			if err != nil {
 				return args, err
 			}
+			value = c.Get(rawArgs[idx], m)
+		} else {
+			value = c.Get("", m)
 		}
-		value := c.Get(m)
 		// If no value was provided, and no default was provided, return an error
 		if value == "" {
 			return args, fmt.Errorf("no value provided for parameter %s and no default available", param)
