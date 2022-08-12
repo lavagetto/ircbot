@@ -13,7 +13,7 @@ import (
 )
 
 /*
-	Commands section
+Commands section
 */
 type CommandClosure func(
 	map[string]string,
@@ -244,6 +244,10 @@ func (cmd Command) parseMessage(m *hbot.Message) (map[string]string, error) {
 }
 
 func (cmd Command) Help() string {
+	// don't show help if none was provided.
+	if cmd.HelpMsg == "" {
+		return ""
+	}
 	parameters := []string{fmt.Sprintf("!%s", cmd.ID)}
 	if cmd.ArgumentsRegexp != nil {
 		for i, parameter := range cmd.ArgumentsRegexp.SubexpNames()[1:] {

@@ -101,11 +101,11 @@ func (r *Registry) Deregister(id string) {
 }
 
 func (r *Registry) AddAll(b *bot.Bot, c *bot.Configuration) {
+	r.addHelp(b, c)
 	for id, Handler := range r.handlers {
 		log.Info("Registering handler", "id", id)
 		b.Irc.AddTrigger(Handler)
 	}
-	r.addHelp(b, c)
 }
 
 // Help prints out the help for the registered commands
@@ -155,5 +155,9 @@ func (r *Registry) addHelp(b *bot.Bot, c *bot.Configuration) {
 		Configuration: c,
 	}
 	help.InitParams()
-	help.AddParameterWithDefault("command", `\S+`, defaultCommand)
+	help.AddParameterWithDefault("command", `\S+`, defaultCommand).AllowChannel().AllowPrivate()
+	// now add it to the registry
+	if err := r.RegisterCommand(help); err != nil {
+		log.Error("Error registering the help handler", "error", err)
+	}
 }

@@ -120,6 +120,8 @@ func (irc *IrcBot) AddBuiltins(showHelp bool) {
 		sing.SetHelp("Sings a nice tune.")
 		pwd.SetHelp("Changes the nickserv password.")
 	}
+	// quit can only be sent in private
+	irc.AddCommand("quit", part).AllowPrivate()
 }
 
 func (irc *IrcBot) addAclCommand(name string, help string, callback CommandAction, showHelp bool) {

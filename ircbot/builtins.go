@@ -131,3 +131,14 @@ func changePass(args map[string]string, m *hbot.Message, irc *IrcBot) bool {
 	irc.Reply(m, "Password changed. Do not forget to change the configuration too.")
 	return false
 }
+
+func part(args map[string]string, m *hbot.Message, irc *IrcBot) bool {
+	for _, ch := range irc.Config().Channels {
+		irc.bot.Irc.Part(ch, "leaving.")
+	}
+	go func() {
+		// Amazingly, this doesn't work.
+		irc.bot.Irc.Close()
+	}()
+	return true
+}
