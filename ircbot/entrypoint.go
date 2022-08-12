@@ -48,7 +48,8 @@ func Init(configFile string) (*IrcBot, error) {
 		registry:    registry,
 		ircCommands: make([]*triggers.Command, 0),
 	}
-	irc.AddBuiltins()
+	// TODO: make this configurable?
+	irc.AddBuiltins(false)
 	return irc, nil
 }
 
@@ -109,16 +110,23 @@ func (irc *IrcBot) AddCommand(name string, action CommandAction) *triggers.Comma
 	return c
 }
 
-func (irc *IrcBot) AddBuiltins() {
-	irc.AddCommand("sing", sing).AllowChannel().AllowPrivate().SetHelp("Sings a nice tune.")
-	irc.addAclCommand("acl_add", "Adds the ability for a command to be used by a single user or in a channel", addACL)
-	irc.addAclCommand("acl_remove", "Removes a user/channel from the ACL", removeAcl)
-	irc.addAclCommand("acl_get", "Gets the defined ACLs for a command", readAcl)
-	irc.AddCommand("passwd", changePass).AddParameter("new_password", `\S+`).AllowPrivate().SetHelp("Changes the nickserv password.")
+func (irc *IrcBot) AddBuiltins(showHelp bool) {
+	sing := irc.AddCommand("sing", sing).AllowChannel().AllowPrivate()
+	irc.addAclCommand("acl_add", "Adds the ability for a command to be used by a single user or in a channel", addACL, showHelp)
+	irc.addAclCommand("acl_remove", "Removes a user/channel from the ACL", removeAcl, showHelp)
+	irc.addAclCommand("acl_get", "Gets the defined ACLs for a command", readAcl, showHelp)
+	pwd := irc.AddCommand("passwd", changePass).AddParameter("new_password", `\S+`).AllowPrivate()
+	if showHelp {
+		sing.SetHelp("Sings a nice tune.")
+		pwd.SetHelp("Changes the nickserv password.")
+	}
 }
 
-func (irc *IrcBot) addAclCommand(name string, help string, callback CommandAction) {
-	cmd := irc.AddCommand(name, callback).AllowPrivate().SetHelp(help)
+func (irc *IrcBot) addAclCommand(name string, help string, callback CommandAction, showHelp bool) {
+	cmd := irc.AddCommand(name, callback).AllowPrivate()
+	if showHelp {
+		cmd.SetHelp(help)
+	}
 	cmd.AddParameter("command", `\w+`)
 	if name != "acl_get" {
 		cmd.AddParameter("nick_or_chan", `\S+`)

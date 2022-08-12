@@ -110,32 +110,50 @@ func (r *Registry) AddAll(b *bot.Bot, c *bot.Configuration) {
 
 // Help prints out the help for the registered commands
 func (r *Registry) addHelp(b *bot.Bot, c *bot.Configuration) {
-	b.Irc.AddTrigger(
-		hbot.Trigger{
-			Condition: func(bot *hbot.Bot, m *hbot.Message) bool {
-				return m.Command == "PRIVMSG" && m.Content == "!help"
-			},
-			Action: func(bot *hbot.Bot, m *hbot.Message) bool {
-				bot.Reply(m, fmt.Sprintf("%s - irc bot for handling outages", c.NickName))
-				bot.Reply(m, "")
-				bot.Reply(m, "Available commands:")
-				bot.Reply(m, fmt.Sprintf("%-16s%s\n", "!help", "Prints this message"))
-				var handlers_help = make([]string, 0, len(r.handlers))
-				// get the help messages for all handlers that have one.
-				for name, handler := range r.handlers {
-					help_msg := handler.Help()
-					// Some commands might not have an help message by design...
-					if help_msg != "" {
-						handlers_help = append(handlers_help, fmt.Sprintf("%-16s%s\n", name, help_msg))
-					}
+	defaultCommand := "~"
+	helpAction := func(args map[string]string,
+		bot *hbot.Bot,
+		m *hbot.Message,
+		c *bot.Configuration,
+		db *sql.DB,
+	) bool {
+		command := args["command"]
+		// No command provided, the full help will be printed out.
+		if command == defaultCommand {
+			bot.Reply(m, fmt.Sprintf("%s - irc bot for handling outages", c.NickName))
+			bot.Reply(m, "")
+			bot.Reply(m, "Available commands:")
+			bot.Reply(m, fmt.Sprintf("%-16s%s\n", "!help", "Prints this message"))
+			var handlers_help = make([]string, 0, len(r.handlers))
+			// get the help messages for all handlers that have one.
+			for name, handler := range r.handlers {
+				help_msg := handler.Help()
+				// Some commands might not have an help message by design...
+				if help_msg != "" {
+					handlers_help = append(handlers_help, fmt.Sprintf("%-16s%s\n", name, help_msg))
 				}
-				// We want a sorted output
-				sort.Strings(handlers_help)
-				for _, msg := range handlers_help {
-					bot.Reply(m, msg)
-				}
-				return true
-			},
-		},
-	)
+			}
+			// We want a sorted output
+			sort.Strings(handlers_help)
+			for _, msg := range handlers_help {
+				bot.Reply(m, msg)
+			}
+		} else {
+			if cmd, ok := r.handlers[command]; ok {
+				bot.Reply(m, fmt.Sprintf("Help for command %s:", command))
+				bot.Reply(m, fmt.Sprintf("%-16s%s\n", command, cmd.Help()))
+			} else {
+				bot.Reply(m, fmt.Sprintf("Sorry, I have no help for command '%s'.", command))
+			}
+		}
+		return true
+	}
+	help := &Command{
+		ID:            "help",
+		Action:        helpAction,
+		Db:            b.DB,
+		Configuration: c,
+	}
+	help.InitParams()
+	help.AddParameterWithDefault("command", `\S+`, defaultCommand)
 }
