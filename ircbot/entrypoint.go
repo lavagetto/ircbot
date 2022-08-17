@@ -79,6 +79,11 @@ func (irc *IrcBot) Config() *bot.Configuration {
 	return irc.conf
 }
 
+// Disconnects the bot.
+func (irc *IrcBot) Close() error {
+	return irc.bot.Irc.Close()
+}
+
 // Reply to a message via IRC
 func (irc *IrcBot) Reply(m *hbot.Message, what string) {
 	irc.bot.Irc.Reply(m, what)
