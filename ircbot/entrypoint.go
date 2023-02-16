@@ -89,6 +89,11 @@ func (irc *IrcBot) Reply(m *hbot.Message, what string) {
 	irc.bot.Irc.Reply(m, what)
 }
 
+// Send a message to a user or channel
+func (irc *IrcBot) Msg(who, what string) {
+	irc.bot.Irc.Msg(who, what)
+}
+
 // Change topic
 func (irc *IrcBot) Topic(channel string, what string) {
 	irc.bot.Irc.Topic(channel, what)
