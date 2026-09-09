@@ -164,7 +164,11 @@ func (cmd Command) isCommand(bot *hbot.Bot, m *hbot.Message) bool {
 	if m.Command != "PRIVMSG" {
 		return false
 	}
-	maybeCommand := strings.Fields(m.Content)[0]
+	fields := strings.Fields(m.Content)
+	if len(fields) == 0 {
+		return false
+	}
+	maybeCommand := fields[0]
 	if maybeCommand != "!"+cmd.ID {
 		return false
 	}
