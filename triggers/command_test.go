@@ -97,3 +97,9 @@ func TestCommandDefaultCb(t *testing.T) {
 	c.AddParameterWithDefaultCb("param", `\w+`, cb).AllowPrivate()
 	c.Handle(&hbot.Bot{}, m)
 }
+
+func TestCommandEmptyMessage(t *testing.T) {
+	c := testCommand(nil, t)
+	m := forgeMsg(" ")
+	c.Handle(&hbot.Bot{}, m)
+}
